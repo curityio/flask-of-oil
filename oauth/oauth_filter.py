@@ -1,4 +1,4 @@
-##########################################################################
+# #########################################################################
 # Copyright 2016 Curity AB
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@ from flask import request, abort, g
 from jwt_validator import JwtValidator
 from opaque_validator import OpaqueValidator
 from functools import wraps
+
 
 class OAuthFilter:
     def __init__(self, verify_ssl=True):
@@ -99,7 +100,9 @@ class OAuthFilter:
                     return f(*args, **kwargs)
                 else:
                     abort(500)
+
             return inner_decorator
+
         return decorator
 
     def filter(self, scopes=None):
