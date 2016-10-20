@@ -10,7 +10,7 @@
 
 ## License
 
-The OAuth Filter (oauth) are licensed under Apache v. 2 license Apache v. 2.
+The OAuth Filter (oauth) is licensed under Apache v. 2 license Apache v. 2.
 
 ## Content
 

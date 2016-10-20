@@ -9,7 +9,7 @@ using the `decorator` pattern described below.
 
 ### Using filter as a before_request filter that runs before ALL routes
 
-When running the filter [before_request](before_request)  *all* routes, the same configuration will apply to all routes. So if the filter is
+When running the filter [before_request](http://flask.pocoo.org/docs/0.11/api/#flask.Flask.before_request)  *all* routes, the same configuration will apply to all routes. So if the filter is
  configured to require a scope of "read" then all routes will require that scope. If routes have different needs then
  the decorator pattern should be used (see next section).
 
@@ -35,7 +35,7 @@ def hello_world():
 
 ### Using filter as a decorator that runs before specific routes
 
-Instaad of setting the `before_request` a decorator can be added to the route that should be protected. This also enables the routes to have
+Instead of setting the `before_request` a decorator can be added to the route that should be protected. This also enables the routes to have
  different scope requirements which could be handy.
 
 *Important: The oauth decorator needs to be CLOSEST to the function*
@@ -61,12 +61,15 @@ def hello_world():
 
 **Filter global variable**
 
+The OAuth filter should be setup the same way as Flask, a global reference and then initialized in main (or with the application)
+The initialization depends on the type of tokens received. See the following examples.
+
 ```python
 from flask import g, Flask
-    from oauth.oauth_filter import OAuthFilter
+from oauth.oauth_filter import OAuthFilter
 
-    _app = Flask(__name__)
-    _oauth = OAuthFilter(verify_ssl=True)
+_app = Flask(__name__)
+_oauth = OAuthFilter(verify_ssl=True)
 ```
 
 **Using Opaque tokens**
