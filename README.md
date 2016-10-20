@@ -112,6 +112,37 @@ has been authenticated through the token. This is then accessible in the route.
 *Future updates of this filter should add more information from the token into the context.*
 
 
+## Handling errors
+
+The filter may abort the request if the Access token is invalid or if the scopes in the access token doesn't match the
+required scopes for the route.
+
+**401 Unauthorized**
+
+When an invalid token is presented the filter will give a 401 unauthorized.
+To customize the response, use Flasks [errorhandler](http://flask.pocoo.org/docs/0.11/api/#flask.Flask.errorhandler) to add a response.
+
+```python
+@_app.errorhandler(401)
+def unauthorized(error):
+    return json.dumps({'error': "unauthorized",
+                       "error_description": "No valid access token found"}), \
+           401, {'Content-Type': 'application/json; charset=utf-8'}
+```
+
+**403 Forbidden**
+
+When a valid token is presented the filter but it's missing the appropriate scopes then the request is aborted
+with a 403 Forbidden.
+
+```python
+@_app.errorhandler(403)
+def forbidden(error):
+    return json.dumps({'error': "forbidden",
+                       "error_description": "Access token is missing appropriate scopes"}), \
+           403, {'Content-Type': 'application/json; charset=utf-8'}
+```
+
 ## Dependencies
 
 **python 2.x** Tested with python 2.7.10
