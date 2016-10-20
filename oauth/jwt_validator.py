@@ -131,7 +131,7 @@ class JwtValidator:
         if req.status_code == 200:
             return req.text
         else:
-            raise Exception("HTTP Get error: %s" % r.status_code)
+            raise Exception("HTTP Get error: %s" % req.status_code)
 
     def load_keys(self):
         # load the jwk set.
