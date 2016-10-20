@@ -1,0 +1,20 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+
+# Intellij
+.idea/
+*.iml
+*.iws
+
+# Logs
+*.log
+
+# Mac
+.DS_Store
+
+# Python
+*.pyc
+*~
