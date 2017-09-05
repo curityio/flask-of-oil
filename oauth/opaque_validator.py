@@ -17,6 +17,8 @@
 import json
 import ssl
 import calendar
+import warnings
+import jwkest.jws
 
 from datetime import datetime
 from requests import request
@@ -44,11 +46,11 @@ class OpaqueValidator:
     def introspect_token(self, token):
 
         params = {
-            'client_id': self._client_id,
             'token': token
         }
 
-        headers = {'content-type': 'application/x-www-form-urlencoded'}
+        headers = {'content-type': 'application/x-www-form-urlencoded',
+                   'accept': 'application/jwt, application/json;q=0.9, text/plain;q=0.8, text/html;q=0.7'}
 
         req = request("POST",
                       self._introspection_url,
@@ -58,30 +60,69 @@ class OpaqueValidator:
                       data=params,
                       headers=headers)
 
+        response_content_type = req.headers.get("Content-Type", "text/plain").split(";")[0]
+        result = {}
+        cache_duration_header_value = req.headers.get("Cache-Duration", None)
+
+        if cache_duration_header_value:
+            # Turn 'public, max-age=31536000' into {'public': None, 'max-age': '31536000'}
+            cache_duration_parts = dict(
+                (part_values[0], None if len(part_values) == 1 else part_values[1])
+                for part_values in [part.strip().split("=") for part in cache_duration_header_value.split(",")])
+
+            if "public" in cache_duration_parts:
+                result["cache_timeout"] = int(cache_duration_parts["max-age"])
+
         if req.status_code == 200:
-            return json.loads(req.text)
+            if response_content_type == "application/json":
+                result.update(json.loads(req.text))
+            elif response_content_type == "application/jwt":
+                result.update(jwkest.jws.factory(req.text).keys())
+            else:
+                 # Text or HTML presumably
+                warnings.warn("Response type from introspection endpoint was unsupported, response_type = " +
+                              response_content_type)
+
+                raise Exception("Response type is from introspect endpoint is " + response_content_type, req.text)
+        elif req.status_code == 204 and response_content_type == "application/jwt":
+            result.update(dict(active=False))
         else:
             raise Exception("HTTP POST error from introspection: %s" % req.status_code)
 
+        return result
+
     def validate(self, token):
 
-        d = datetime.utcnow()
-        now = calendar.timegm(d.utctimetuple())
+        now = calendar.timegm(datetime.utcnow().utctimetuple())
 
         # Lookup in cache:
         cached_response = self._token_cache.get(token)
-        if cached_response is not None \
-            and cached_response['active'] \
-                and cached_response['exp'] >= now:
-
-            return {"subject": cached_response['sub'],
-                    "scope": cached_response['scope'],
-                    "active": True}
+        if cached_response is not None:
+            if cached_response['active']:
+                if cached_response['exp'] >= now:
+                    return {"subject": cached_response['sub'],
+                            "scope": cached_response['scope'],
+                            "active": True}
+            else:
+                return dict(active=False)
 
         introspect_response = self.introspect_token(token)
+        cache_timeout = 0
 
-        if 'active' not in introspect_response:
+        if "cache_timeout" in introspect_response:
+            cache_timeout = introspect_response["cache_timeout"]
+        elif "exp" in introspect_response:
+            cache_timeout = introspect_response["exp"] - now
+
+        if "active" not in introspect_response:
+            # The token isn't know to be active, so we'll never introspect it again
+            introspect_response["active"] = False
+
+            self._token_cache.set(token, introspect_response, timeout=cache_timeout)
+
             raise OpaqueValidatorException("No active field in introspection response")
+
+        self._token_cache.set(token, introspect_response, timeout=cache_timeout)
 
         if not introspect_response['active']:
             return {"active": False}
@@ -94,9 +135,6 @@ class OpaqueValidator:
 
         if 'scope' not in introspect_response:
             raise OpaqueValidatorException("Missing scope field in introspection response")
-
-        cache_timeout = introspect_response['exp'] - now
-        self._token_cache.set(token, introspect_response, timeout=cache_timeout)
 
         return {"subject": introspect_response['sub'],
                 "scope": introspect_response['scope'],
