@@ -15,7 +15,8 @@
 ##########################################################################
 
 import re
-from flask import request, abort, g
+
+from flask import request, abort, g, make_response
 from jwt_validator import JwtValidator
 from opaque_validator import OpaqueValidator
 from functools import wraps
@@ -109,15 +110,19 @@ class OAuthFilter:
         print "Request method = " + str(request.method)
         print "Authorization Header " + str(request.headers.get("authorization"))
         token = self._extract_access_token(request)
-        validated_token = self.validator.validate(token)
+
+        try:
+            validated_token = self.validator.validate(token)
+        except Exception:
+            abort(make_response("Server Error", 500))
 
         if not validated_token['active']:
-            abort(401)
+            abort(make_response("Access Denied", 401))
 
         # Authorize scope
         authorized = self._authorize(validated_token['scope'], endpoint_scopes=scopes)
         if not authorized:
-            abort(403)
+            abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
         g.user = validated_token['subject']
