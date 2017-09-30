@@ -66,14 +66,18 @@ class OAuthFilter:
         :return: the stripped token
         """
         authorization_header = request.headers.get("authorization")
+
         if authorization_header is None:
             abort(401)
 
+        authorization_header_parts = re.split("\s+", authorization_header)
+        authorization_type = authorization_header_parts[0].lower()
+
         # Extract the token from the Bearer string
-        if not authorization_header.startswith("Bearer "):
+        if authorization_type != "bearer":
             abort(401)
-        token = authorization_header.replace("Bearer ", "")
-        return token.strip()
+
+        return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
 
     def _authorize(self, scope, endpoint_scopes=None):
         if isinstance(scope, (list, tuple)):
