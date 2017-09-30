@@ -77,14 +77,18 @@ class OpaqueValidator:
             if response_content_type == "application/json":
                 result.update(json.loads(req.text))
             elif response_content_type == "application/jwt":
-                result.update(jwkest.jws.factory(req.text).keys())
+                jws = jwkest.jws.factory(req.text)
+
+                if jws is not None and len(jws.jwt.part) >= 2:
+                    result["active"] = True
+                    result.update(json.loads(jws.jwt.part[1]))
             else:
                  # Text or HTML presumably
                 warnings.warn("Response type from introspection endpoint was unsupported, response_type = " +
                               response_content_type)
 
                 raise Exception("Response type is from introspect endpoint is " + response_content_type, req.text)
-        elif req.status_code == 204 and response_content_type == "application/jwt":
+        elif req.status_code == 204:
             result.update(dict(active=False))
         else:
             raise Exception("HTTP POST error from introspection: %s" % req.status_code)
