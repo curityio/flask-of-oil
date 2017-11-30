@@ -15,7 +15,8 @@
 ##########################################################################
 
 import re
-from flask import request, abort, g
+
+from flask import request, abort, g, make_response
 from jwt_validator import JwtValidator
 from opaque_validator import OpaqueValidator
 from functools import wraps
@@ -65,14 +66,18 @@ class OAuthFilter:
         :return: the stripped token
         """
         authorization_header = request.headers.get("authorization")
+
         if authorization_header is None:
             abort(401)
 
+        authorization_header_parts = re.split("\s+", authorization_header)
+        authorization_type = authorization_header_parts[0].lower()
+
         # Extract the token from the Bearer string
-        if not authorization_header.startswith("Bearer "):
+        if authorization_type != "bearer":
             abort(401)
-        token = authorization_header.replace("Bearer ", "")
-        return token.strip()
+
+        return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
 
     def _authorize(self, scope, endpoint_scopes=None):
         if isinstance(scope, (list, tuple)):
@@ -109,15 +114,19 @@ class OAuthFilter:
         print "Request method = " + str(request.method)
         print "Authorization Header " + str(request.headers.get("authorization"))
         token = self._extract_access_token(request)
-        validated_token = self.validator.validate(token)
+
+        try:
+            validated_token = self.validator.validate(token)
+        except Exception:
+            abort(make_response("Server Error", 500))
 
         if not validated_token['active']:
-            abort(401)
+            abort(make_response("Access Denied", 401))
 
         # Authorize scope
         authorized = self._authorize(validated_token['scope'], endpoint_scopes=scopes)
         if not authorized:
-            abort(403)
+            abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
         g.user = validated_token['subject']
