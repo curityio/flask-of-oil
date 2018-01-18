@@ -62,12 +62,10 @@ class JwtValidator:
             print "Invalid audience, no audience in payload"
             return {"active": False}
 
-        # FIXME: Curity has a bug that causes it to use space-separated values for audience when it should in fact
-        # be an array. When that bug is fixed, this too should be fixed.
-        aud = re.split("\s+", payload['aud'])
+        aud = payload['aud']
 
         if self.aud not in aud:
-            print "Invalid audience %s, expected %s" % (payload['aud'], self.aud)
+            print "Invalid audience %s, expected %s" % (aud, self.aud)
             return {"active": False}
 
         if 'alg' not in header:
