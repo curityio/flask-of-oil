@@ -14,6 +14,7 @@
 # limitations under the License.
 ##########################################################################
 
+import json
 import re
 
 from flask import request, abort, g, make_response
@@ -21,12 +22,16 @@ from jwt_validator import JwtValidator
 from opaque_validator import OpaqueValidator
 from functools import wraps
 
+from tools import base64_urldecode
+
 
 class OAuthFilter:
     def __init__(self, verify_ssl=True):
         self.protected_endpoints = {}
         self.configured = False
         self.verify_ssl = verify_ssl
+        self.validators = dict()
+        self.scopes = list()
 
     def configure_with_jwt(self, jwks_url, issuer, audience, scopes=[]):
         """
@@ -37,8 +42,15 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
-        self.validator = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
+        self.validators["*"] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
         self.scopes = scopes
+
+    def configure_with_multiple_jwt_issuers(self, issuers, audience, scopes=list()):
+        self.scopes = scopes
+
+        for issuer in issuers:
+            jwks_url = issuer + "/jwks"
+            self.validators[issuer] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
 
     def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=[]):
         """
@@ -49,7 +61,7 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
-        self.validator = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
+        self.validators["*"] = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
         self.scopes = scopes
 
     def _add_protected_endpoint(self, func, scopes):
@@ -114,9 +126,22 @@ class OAuthFilter:
         print "Request method = " + str(request.method)
         print "Authorization Header " + str(request.headers.get("authorization"))
         token = self._extract_access_token(request)
+        validated_token = dict(active=False)
 
         try:
-            validated_token = self.validator.validate(token)
+            if "*" in self.validators:
+                validated_token = self.validators["*"].validate(token)
+            else:
+                # See if we can determine the issuer; we'll use that as the key to find
+                # the validator.
+                parts = token.split(".")
+
+                if len(parts) == 3:
+                    payload = json.loads(base64_urldecode(parts[1]))
+                    issuer = payload["iss"]
+
+                    if issuer in self.validators:
+                        validated_token = self.validators[issuer].validate(token)
         except Exception:
             abort(make_response("Server Error", 500))
 
