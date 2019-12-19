@@ -4,7 +4,10 @@ This library provides an extension for protecting APIs with OAuth when using Fla
 
 ## Installation
 
+You can either install this module with pip:
 ```pip install -U flask-of-oil```
+
+Of copy the flask_of_oil folder in your project and install the requirements in ```requirements.txt``` using pip or pipenv
 
 ## Usage
 
