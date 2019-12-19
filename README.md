@@ -1,5 +1,10 @@
-# An OAuth 2.0 filter for Flask
+# Flask OAuth Filter - an OAuth Interceptor Logic
+
 This library provides an extension for protecting APIs with OAuth when using Flask.
+
+## Installation
+
+```pip install -U flask-of-oil```
 
 ## Usage
 
@@ -16,8 +21,9 @@ When running the filter [before_request](http://flask.pocoo.org/docs/0.11/api/#f
 **Example using before_request**
 
 ```python
+import json
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -28,7 +34,7 @@ def hello_world():
     """
     :return: Returns a very useful JSON message when accessed.
     """
-    print "OAuth Access token used for access"
+    print("OAuth Access token used for access")
     return json.dumps({"hello": g.user})
 ```
 
@@ -41,8 +47,9 @@ Instead of setting the `before_request` a decorator can be added to the route th
 *Important: The oauth decorator needs to be CLOSEST to the function*
 
 ```python
+import json
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -53,7 +60,7 @@ def hello_world():
     """
     :return: Returns a very useful JSON message when accessed.
     """
-    print "OAuth Access token used for access"
+    print("OAuth Access token used for access")
     return json.dumps({"hello": g.user})
 ```
 
@@ -66,7 +73,7 @@ The initialization depends on the type of tokens received. See the following exa
 
 ```python
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -143,19 +150,6 @@ def forbidden(error):
            403, {'Content-Type': 'application/json; charset=utf-8'}
 ```
 
-## Dependencies
-
-**python 2.x** Tested with python 2.7.10
-
-**OpenSSL 1.0** to be able to do modern TLS versions. Python togheter with 0.9.x has a bug that makes it impossible to select protocol in the handshake, so it cannot connect to servers that have disabled SSLv2.
-
-**Flask** as the web application
-
-**pyjwkest** for JWK validation
-
-Python dependencies can be installed by using Pip.
-	pip install -r requirements.txt
-
 
 ## Questions and Support
 
@@ -167,4 +161,4 @@ For questions and support, contact Curity AB:
 > https://curity.io
 
 
-Copyright (C) 2016 Curity AB.
+Copyright (C) 2019 Curity AB.

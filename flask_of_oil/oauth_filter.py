@@ -46,7 +46,7 @@ class OAuthFilter:
         self.validator = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
         self.scopes = scopes
 
-    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=None):
+    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=[]):
         """
 
         :param introspection_url:
@@ -55,8 +55,6 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
-        if scopes is None:
-            scopes = []
         self.validator = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
         self.scopes = scopes
 
@@ -143,6 +141,6 @@ class OAuthFilter:
             abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
-        g.user = validated_token
+        g.user = validated_token['subject']
 
         return None
