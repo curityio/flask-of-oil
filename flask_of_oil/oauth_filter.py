@@ -1,5 +1,5 @@
 # #########################################################################
-# Copyright 2016 Curity AB
+# Copyright 2019 Curity AB
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
 # limitations under the License.
 ##########################################################################
 
-import re
+import logging
+from functools import wraps
 
 from flask import request, abort, g, make_response
-from jwt_validator import JwtValidator
-from opaque_validator import OpaqueValidator
-from functools import wraps
+
+from flask_of_oil.jwt_validator import JwtValidator
+from flask_of_oil.opaque_validator import OpaqueValidator
 
 
 class OAuthFilter:
@@ -27,8 +28,11 @@ class OAuthFilter:
         self.protected_endpoints = {}
         self.configured = False
         self.verify_ssl = verify_ssl
+        self.logger = logging.getLogger(__name__)
+        self.validator = None
+        self.scopes = None
 
-    def configure_with_jwt(self, jwks_url, issuer, audience, scopes=[]):
+    def configure_with_jwt(self, jwks_url, issuer, audience, scopes=None):
         """
 
         :param jwks_url:
@@ -37,10 +41,12 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
+        if scopes is None:
+            scopes = []
         self.validator = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
         self.scopes = scopes
 
-    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=[]):
+    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=None):
         """
 
         :param introspection_url:
@@ -49,28 +55,30 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
+        if scopes is None:
+            scopes = []
         self.validator = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
         self.scopes = scopes
 
     def _add_protected_endpoint(self, func, scopes):
         self.protected_endpoints[func] = scopes
 
-    def _extract_access_token(self, request):
+    @staticmethod
+    def _extract_access_token(authorization_header=None):
         """
         Extract the token from the Authorization header
         OAuth Access Tokens are placed in the header in the form "Bearer XYZ", so Bearer
         needs to be removed and the whitespaces trimmed.
 
         The method will abort if no token is present, and return a 401
-        :param request: The incoming flask request
+        :param authorization_header: The incoming authorization_header flask request
         :return: the stripped token
         """
-        authorization_header = request.headers.get("authorization")
 
         if authorization_header is None:
             abort(401)
 
-        authorization_header_parts = re.split("\s+", authorization_header)
+        authorization_header_parts = authorization_header.split()
         authorization_type = authorization_header_parts[0].lower()
 
         # Extract the token from the Bearer string
@@ -83,7 +91,7 @@ class OAuthFilter:
         if isinstance(scope, (list, tuple)):
             incoming_scopes = scope
         else:
-            incoming_scopes = re.split("\s+", scope)
+            incoming_scopes = scope.split()
 
         if endpoint_scopes is None:
             required_scopes = self.scopes
@@ -92,12 +100,16 @@ class OAuthFilter:
 
         return all(s in incoming_scopes for s in required_scopes)
 
-    def protect(self, scopes=[]):
+    def protect(self, scopes=None):
         """
         This is a decorator function that can be used on a flask route:
         @_oauth.protect(["read","write]) or @_oauth.protect()
         :param scopes: The scopes that are required for the endpoint protected
         """
+
+        if scopes is None:
+            scopes = []
+
         def decorator(f):
             @wraps(f)
             def inner_decorator(*args, **kwargs):
@@ -111,14 +123,16 @@ class OAuthFilter:
         return decorator
 
     def filter(self, scopes=None):
-        print "Request method = " + str(request.method)
-        print "Authorization Header " + str(request.headers.get("authorization"))
-        token = self._extract_access_token(request)
+        self.logger.debug("Request method = " + str(request.method))
+        self.logger.debug("Authorization Header " + request.headers.get("authorization", type=str))
+        token = self._extract_access_token(request.headers.get("authorization", type=str))
 
+        # noinspection PyBroadException
         try:
             validated_token = self.validator.validate(token)
         except Exception:
             abort(make_response("Server Error", 500))
+            return
 
         if not validated_token['active']:
             abort(make_response("Access Denied", 401))
@@ -129,7 +143,6 @@ class OAuthFilter:
             abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
-        g.user = validated_token['subject']
+        g.user = validated_token
 
         return None
-

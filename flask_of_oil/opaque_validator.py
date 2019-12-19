@@ -1,5 +1,5 @@
 ##########################################################################
-# Copyright 2016 Curity AB
+# Copyright 2019 Curity AB
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
 # limitations under the License.
 ##########################################################################
 
-import json
-import ssl
 import calendar
-import warnings
-import jwkest.jws
-
+import json
+import logging
+import ssl
 from datetime import datetime
+
+import jwkest.jws
+from cachelib.simple import SimpleCache
 from requests import request
-from werkzeug.contrib.cache import SimpleCache
 
 
 class OpaqueValidatorException(Exception):
@@ -42,6 +42,7 @@ class OpaqueValidator:
         self._client_secret = client_secret
 
         self._token_cache = SimpleCache()
+        self.logger = logging.getLogger(__name__)
 
     def introspect_token(self, token):
 
@@ -83,9 +84,8 @@ class OpaqueValidator:
                     result["active"] = True
                     result.update(json.loads(jws.jwt.part[1]))
             else:
-                 # Text or HTML presumably
-                warnings.warn("Response type from introspection endpoint was unsupported, response_type = " +
-                              response_content_type)
+                self.logger.warning("Response type from introspection endpoint was unsupported, response_type = " +
+                                    response_content_type)
 
                 raise Exception("Response type is from introspect endpoint is " + response_content_type, req.text)
         elif req.status_code == 204:
@@ -142,4 +142,5 @@ class OpaqueValidator:
 
         return {"subject": introspect_response['sub'],
                 "scope": introspect_response['scope'],
+                "cnf": introspect_response.get("cnf", ""),
                 "active": True}
