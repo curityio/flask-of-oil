@@ -3,13 +3,13 @@ from distutils.core import setup
 setup(
     name='Flask-of-Oil',
     packages=['Flask-of-Oil'],
-    version='0.0.1',  # Start with a small number and increase it with every change you make
-    license='Apache license 2.0',  # Chose a license from here: https://help.github.com/articles/licensing-a-repository
+    version='0.0.1',
+    license='Apache license 2.0',
     description='Flask OAuth Filter - an OAuth Interceptor Logic',
     author='Curity AB',
     author_email='info@curity.io',
-    url='https://github.com/curity/flask-oauthfilter',
-    download_url='https://github.com/curity/flask-oauthfilter/archive/v_001.tar.gz',  # I explain this later on
+    url='https://github.com/curity/flask-of-oil',
+    download_url='https://github.com/curity/flask-of-oil/archive/v_001.tar.gz',
     keywords=['oauth', 'flask', 'introspection', 'access token', 'jwt', 'opaque'],
     install_requires=[
         'requests',
