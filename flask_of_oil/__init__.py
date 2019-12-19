@@ -1,4 +1,4 @@
-__version__ = '0.0.1'
+__version__ = '0.0.3'
 
 from flask_of_oil.jwt_validator import JwtValidator, JwtValidatorException
 from flask_of_oil.oauth_filter import OAuthFilter

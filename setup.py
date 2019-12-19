@@ -3,9 +3,10 @@ from distutils.core import setup
 setup(
     name='Flask-of-Oil',
     packages=['flask_of_oil'],
-    version='0.0.1',
-    license='Apache license 2.0',
+    version='0.0.3',
+    license='Apache Software License',
     description='Flask OAuth Filter - an OAuth Interceptor Logic',
+    long_description=open('README.rst').read(),
     author='Curity AB',
     author_email='info@curity.io',
     url='https://github.com/curity/flask-of-oil',
