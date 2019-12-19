@@ -164,4 +164,4 @@ For questions and support, contact Curity AB:
 > https://curity.io
 
 
-Copyright (C) 2019 Curity AB.
+Copyright (C) 2016 Curity AB.
