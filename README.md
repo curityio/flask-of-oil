@@ -114,18 +114,13 @@ if __name__ == '__main__':
              ssl_context="adhoc")
 ```
 
-## The g.user variable
-
-When the filter accepts the request, it sets the `g.user` context local variable for that request with the username that
-has been authenticated through the token. This is then accessible in the route.
-
-*Future updates of this filter should add more information from the token into the context.*
-
 
 ## Access token claims in Request object
 
-When the filter accepts the request, it sets the `request.foil_claims` context local variable for that request with all
+When the filter accepts the request, it sets the `request.claims` context local variable for that request with all
 the token claims. For JWT tokens, this is the JWT payload and for opaque tokens the introspection response. 
+
+For example, in the subject of the Authorization can be accessed like so `request.claims.sub` 
 
 ## Handling errors
 

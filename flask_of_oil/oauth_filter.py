@@ -17,7 +17,7 @@
 import logging
 from functools import wraps
 
-from flask import request, abort, g, make_response
+from flask import request, abort, make_response
 
 from flask_of_oil.jwt_validator import JwtValidator
 from flask_of_oil.opaque_validator import OpaqueValidator
@@ -147,7 +147,6 @@ class OAuthFilter:
             abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
-        g.user = validated_token['sub']
-        request.foil_claims = validated_token
+        request.claims = validated_token
 
         return None
