@@ -122,6 +122,11 @@ has been authenticated through the token. This is then accessible in the route.
 *Future updates of this filter should add more information from the token into the context.*
 
 
+## Access token claims in Request object
+
+When the filter accepts the request, it sets the `request.foil_claims` context local variable for that request with all
+the token claims. For JWT tokens, this is the JWT payload and for opaque tokens the introspection response. 
+
 ## Handling errors
 
 The filter may abort the request if the Access token is invalid or if the scopes in the access token doesn't match the

@@ -141,6 +141,7 @@ class OAuthFilter:
             abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
-        g.user = validated_token['subject']
+        g.user = validated_token['sub']
+        request.foil_claims = validated_token
 
         return None
