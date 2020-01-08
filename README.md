@@ -67,6 +67,31 @@ def hello_world():
     return json.dumps({"hello": g.user})
 ```
 
+### Authorizing the request based on scopes
+
+The scope parameter of the protect decorator must either be a list or a space separated string:
+``` 
+["scope1", "scope2]
+or 
+"scope1 scope2"
+```
+
+### Authorizing the request based on claims
+
+The incoming request can also be authorized based on claims, or a combination of claims and scopes.
+The claims parameter of the protect decorator method has to be a `dict`, with keys the claims that are required 
+for the request to be allowed. The value `None` instructs the filter to not check the value for the specific claim. 
+
+```python
+# Only allow requests where the incoming access token has the scope read and it contains a claim named MyGoodClaim
+@_oauth.protect(scope=["read"], claims={"MyGoodClaim": None})
+```
+```python
+# Only allow requests where the incoming access token has the scope write and it contains a claim named MyGoodClaim with value MyGoodValue
+@_oauth.protect(scope=["write"], claims={"MyGoodClaim": "MyGoodValue"})
+```
+
+
 ## Initializing the filter
 
 **Filter global variable**
