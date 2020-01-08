@@ -16,16 +16,15 @@
 
 import calendar
 import json
+import logging
 import ssl
-import re
 from datetime import datetime
 
 from jwkest.jwk import KEYS
 from jwkest.jws import JWS
 from requests import request
 
-
-from tools import base64_urldecode
+from flask_of_oil.tools import base64_urldecode
 
 
 class JwtValidatorException(Exception):
@@ -34,65 +33,66 @@ class JwtValidatorException(Exception):
 
 class JwtValidator:
     def __init__(self, jwks_url, issuer, audience, verify_ssl_server=True):
-        self.supported_algoritms = ['RS256', "RS512"]
+        self.supported_algorithms = ['RS256', "RS512"]
         self.jwks_url = jwks_url
         self.aud = audience
         self.iss = issuer
         self.verify_ssl_server = verify_ssl_server
-
         self.jwks = self.load_keys()
+        self.logger = logging.getLogger(__name__)
 
     def validate(self, jwt):
         parts = jwt.split('.')
         if len(parts) != 3:
-            print 'Invalid JWT. Only JWS supported.'
+            self.logger.debug('Invalid JWT. Only JWS supported.')
             return {"active": False}
+        # noinspection PyBroadException
         try:
             header = json.loads(base64_urldecode(parts[0]))
             payload = json.loads(base64_urldecode(parts[1]))
-        except Exception as e:
-            print "Invalid JWT, format not json"
+        except Exception:
+            self.logger.debug("Invalid JWT, format not json")
             return {"active": False}
 
         if self.iss != payload['iss']:
-            print "Invalid issuer %s, expected %s" % (payload['iss'], self.iss)
+            self.logger.debug("Invalid issuer %s, expected %s" % (payload['iss'], self.iss))
             return {"active": False}
 
         if 'aud' not in payload:
-            print "Invalid audience, no audience in payload"
+            self.logger.debug("Invalid audience, no audience in payload")
             return {"active": False}
 
         aud = payload['aud']
 
         if self.aud not in aud:
-            print "Invalid audience %s, expected %s" % (aud, self.aud)
+            self.logger.debug("Invalid audience %s, expected %s" % (aud, self.aud))
             return {"active": False}
 
         if 'alg' not in header:
-            print "Missing algorithm in header"
+            self.logger.debug("Missing algorithm in header")
             return {"active": False}
 
-        if header['alg'] not in self.supported_algoritms:
-            print "Unsupported algorithm in header %s" % (header['alg'])
+        if header['alg'] not in self.supported_algorithms:
+            self.logger.debug("Unsupported algorithm in header %s" % (header['alg']))
             return {"active": False}
 
         jws = JWS(alg=header['alg'])
 
-        # Raises exception when signature is invalid
+        # noinspection PyBroadException
         try:
             jws.verify_compact(jwt, self.jwks)
-        except Exception as e:
-            print "Exception validating signature"
+        except Exception:
+            self.logger.debug("Exception validating signature")
             return {'active': False}
 
-        print "Successfully validated signature."
+        self.logger.debug("Successfully validated signature.")
 
         if 'exp' not in payload:
-            print "No expiration in body, invalid token"
+            self.logger.debug("No expiration in body, invalid token")
             return {"active": False}
 
         if 'sub' not in payload:
-            print "No subject in body, invalid token"
+            self.logger.debug("No subject in body, invalid token")
             return {"active": False}
 
         # Could be an empty scope, which may be allowed, so replace with empty string if not found
@@ -109,11 +109,7 @@ class JwtValidator:
         if now >= exp:
             return {"active": False}
         else:
-            return {
-                "subject": payload['sub'],
-                "scope": scope,
-                "active": True
-            }
+            return payload
 
     def get_jwks_data(self):
         ctx = ssl.create_default_context()

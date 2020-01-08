@@ -1,5 +1,13 @@
-# An OAuth 2.0 filter for Flask
+# Flask OAuth Filter - an OAuth Interceptor Logic
+
 This library provides an extension for protecting APIs with OAuth when using Flask.
+
+## Installation
+
+You can either install this module with pip:
+```pip install -U flask-of-oil```
+
+Or copy the flask_of_oil folder in your project and install the requirements in ```requirements.txt``` using pip or pipenv
 
 ## Usage
 
@@ -16,8 +24,9 @@ When running the filter [before_request](http://flask.pocoo.org/docs/0.11/api/#f
 **Example using before_request**
 
 ```python
+import json
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -28,7 +37,7 @@ def hello_world():
     """
     :return: Returns a very useful JSON message when accessed.
     """
-    print "OAuth Access token used for access"
+    print("OAuth Access token used for access")
     return json.dumps({"hello": g.user})
 ```
 
@@ -41,8 +50,9 @@ Instead of setting the `before_request` a decorator can be added to the route th
 *Important: The oauth decorator needs to be CLOSEST to the function*
 
 ```python
+import json
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -53,9 +63,34 @@ def hello_world():
     """
     :return: Returns a very useful JSON message when accessed.
     """
-    print "OAuth Access token used for access"
+    print("OAuth Access token used for access")
     return json.dumps({"hello": g.user})
 ```
+
+### Authorizing the request based on scopes
+
+The scope parameter of the protect decorator must either be a list or a space separated string:
+``` 
+["scope1", "scope2]
+or 
+"scope1 scope2"
+```
+
+### Authorizing the request based on claims
+
+The incoming request can also be authorized based on claims, or a combination of claims and scopes.
+The claims parameter of the protect decorator method has to be a `dict`, with keys the claims that are required 
+for the request to be allowed. The value `None` instructs the filter to not check the value for the specific claim. 
+
+```python
+# Only allow requests where the incoming access token has the scope read and it contains a claim named MyGoodClaim
+@_oauth.protect(scope=["read"], claims={"MyGoodClaim": None})
+```
+```python
+# Only allow requests where the incoming access token has the scope write and it contains a claim named MyGoodClaim with value MyGoodValue
+@_oauth.protect(scope=["write"], claims={"MyGoodClaim": "MyGoodValue"})
+```
+
 
 ## Initializing the filter
 
@@ -66,7 +101,7 @@ The initialization depends on the type of tokens received. See the following exa
 
 ```python
 from flask import g, Flask
-from oauth.oauth_filter import OAuthFilter
+from flask_of_oil.oauth_filter import OAuthFilter
 
 _app = Flask(__name__)
 _oauth = OAuthFilter(verify_ssl=True)
@@ -104,13 +139,13 @@ if __name__ == '__main__':
              ssl_context="adhoc")
 ```
 
-## The g.user variable
 
-When the filter accepts the request, it sets the `g.user` context local variable for that request with the username that
-has been authenticated through the token. This is then accessible in the route.
+## Access token claims in Request object
 
-*Future updates of this filter should add more information from the token into the context.*
+When the filter accepts the request, it sets the `request.claims` context local variable for that request with all
+the token claims. For JWT tokens, this is the JWT payload and for opaque tokens the introspection response. 
 
+For example, in the subject of the Authorization can be accessed like so `request.claims.sub` 
 
 ## Handling errors
 
@@ -142,19 +177,6 @@ def forbidden(error):
                        "error_description": "Access token is missing appropriate scopes"}), \
            403, {'Content-Type': 'application/json; charset=utf-8'}
 ```
-
-## Dependencies
-
-**python 2.x** Tested with python 2.7.10
-
-**OpenSSL 1.0** to be able to do modern TLS versions. Python togheter with 0.9.x has a bug that makes it impossible to select protocol in the handshake, so it cannot connect to servers that have disabled SSLv2.
-
-**Flask** as the web application
-
-**pyjwkest** for JWK validation
-
-Python dependencies can be installed by using Pip.
-	pip install -r requirements.txt
 
 
 ## Questions and Support
