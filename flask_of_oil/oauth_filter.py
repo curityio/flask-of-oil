@@ -62,7 +62,7 @@ class OAuthFilter:
         self.protected_endpoints[func] = scopes
 
     @staticmethod
-    def _extract_access_token(authorization_header=None):
+    def _extract_access_token(request=None):
         """
         Extract the token from the Authorization header
         OAuth Access Tokens are placed in the header in the form "Bearer XYZ", so Bearer
@@ -73,17 +73,23 @@ class OAuthFilter:
         :return: the stripped token
         """
 
-        if authorization_header is None:
+        authorization_header = request.headers.get("authorization", type=str)
+        query_param_access_token = request.args.get("access_token", type=str)
+
+        if authorization_header is None and query_param_access_token is None:
             abort(401)
 
-        authorization_header_parts = authorization_header.split()
-        authorization_type = authorization_header_parts[0].lower()
+        if authorization_header is not None:
+            authorization_header_parts = authorization_header.split()
+            authorization_type = authorization_header_parts[0].lower()
 
-        # Extract the token from the Bearer string
-        if authorization_type != "bearer":
-            abort(401)
+            # Extract the token from the Bearer string
+            if authorization_type != "bearer":
+                abort(401)
 
-        return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
+            return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
+
+        return query_param_access_token
 
     def _authorize(self, scope, endpoint_scopes=None):
         if isinstance(scope, (list, tuple)):
@@ -122,8 +128,8 @@ class OAuthFilter:
 
     def filter(self, scopes=None):
         self.logger.debug("Request method = " + str(request.method))
-        self.logger.debug("Authorization Header " + request.headers.get("authorization", type=str))
-        token = self._extract_access_token(request.headers.get("authorization", type=str))
+        token = self._extract_access_token(request)
+        self.logger.debug("Access token " + token)
 
         # noinspection PyBroadException
         try:
