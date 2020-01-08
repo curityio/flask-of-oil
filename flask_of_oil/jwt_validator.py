@@ -109,11 +109,7 @@ class JwtValidator:
         if now >= exp:
             return {"active": False}
         else:
-            return {
-                "subject": payload['sub'],
-                "scope": scope,
-                "active": True
-            }
+            return payload
 
     def get_jwks_data(self):
         ctx = ssl.create_default_context()

@@ -104,9 +104,7 @@ class OpaqueValidator:
         if cached_response is not None:
             if cached_response['active']:
                 if cached_response['exp'] >= now:
-                    return {"subject": cached_response['sub'],
-                            "scope": cached_response['scope'],
-                            "active": True}
+                    return cached_response
             else:
                 return dict(active=False)
 
@@ -140,7 +138,4 @@ class OpaqueValidator:
         if 'scope' not in introspect_response:
             raise OpaqueValidatorException("Missing scope field in introspection response")
 
-        return {"subject": introspect_response['sub'],
-                "scope": introspect_response['scope'],
-                "cnf": introspect_response.get("cnf", ""),
-                "active": True}
+        return introspect_response
