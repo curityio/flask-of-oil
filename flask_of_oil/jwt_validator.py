@@ -109,6 +109,7 @@ class JwtValidator:
         if now >= exp:
             return {"active": False}
         else:
+            payload["active"] = True
             return payload
 
     def get_jwks_data(self):
