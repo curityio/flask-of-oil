@@ -1,7 +1,7 @@
 # Flask OAuth Filter - an OAuth Interceptor Logic
 
-[![Quality](https://curity.io/assets/images/badges/flask-of-oil-quality.svg)](https://curity.io/resources/code-examples/status/)
-[![Availability](https://curity.io/assets/images/badges/flask-of-oil-availability.svg)](https://curity.io/resources/code-examples/status/)
+[![Quality](https://img.shields.io/badge/quality-production-green)](https://curity.io/resources/code-examples/status/)
+[![Availability](https://img.shields.io/badge/availability-binary-blue)](https://curity.io/resources/code-examples/status/)
 
 This library provides an extension for protecting APIs with OAuth when using Flask.
 
