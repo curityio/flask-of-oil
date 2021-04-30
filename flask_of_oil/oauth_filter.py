@@ -157,12 +157,12 @@ class OAuthFilter:
             return
 
         if not validated_token['active']:
-            abort(make_response("Access Denied", 401))
+            abort(make_response("Access Denied (Authentication Failed)", 401))
 
         # Authorize scope
         authorized = self._authorize(validated_token, endpoint_scopes=scopes, endpoint_claims=claims)
         if not authorized:
-            abort(make_response("Forbidden", 403))
+            abort(make_response("Forbidden (Authorization Failed)", 403))
 
         # Set the user info in a context global variable
         request.claims = validated_token
