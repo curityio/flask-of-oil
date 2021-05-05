@@ -93,6 +93,9 @@ class OAuthFilter:
 
     def _authorize(self, token_claims, endpoint_scopes, endpoint_claims):
 
+        if endpoint_claims is None:
+            endpoint_claims = {}
+
         for claim in endpoint_claims:
             if claim not in token_claims or \
                     (endpoint_claims[claim] is not None and token_claims[claim] != endpoint_claims[claim]):
@@ -153,16 +156,16 @@ class OAuthFilter:
         try:
             validated_token = self.validator.validate(token)
         except Exception:
-            abort(make_response("Server Error", 500))
+            abort(500)
             return
 
         if not validated_token['active']:
-            abort(make_response("Access Denied", 401))
+            abort(401)
 
         # Authorize scope
         authorized = self._authorize(validated_token, endpoint_scopes=scopes, endpoint_claims=claims)
         if not authorized:
-            abort(make_response("Forbidden", 403))
+            abort(403)
 
         # Set the user info in a context global variable
         request.claims = validated_token

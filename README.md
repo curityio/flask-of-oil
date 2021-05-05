@@ -148,12 +148,12 @@ if __name__ == '__main__':
 When the filter accepts the request, it sets the `request.claims` context local variable for that request with all
 the token claims. For JWT tokens, this is the JWT payload and for opaque tokens the introspection response. 
 
-For example, in the subject of the Authorization can be accessed like so `request.claims.sub` 
+For example, the subject of the Authorization can be accessed like so `request.claims["sub"]`.
 
 ## Handling errors
 
-The filter may abort the request if the Access token is invalid or if the scopes in the access token doesn't match the
-required scopes for the route.
+The filter may abort the request if the Access token is invalid or if the scopes or claims in the access token doesn't match the
+required scopes or claims for the route.
 
 **401 Unauthorized**
 
@@ -170,8 +170,8 @@ def unauthorized(error):
 
 **403 Forbidden**
 
-When a valid token is presented the filter but it's missing the appropriate scopes then the request is aborted
-with a 403 Forbidden.
+When a valid token is presented the filter but it's missing the appropriate scopes or claims (or the claims have wrong values)
+then the request is aborted with a 403 Forbidden.
 
 ```python
 @_app.errorhandler(403)
