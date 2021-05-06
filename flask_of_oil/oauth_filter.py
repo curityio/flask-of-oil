@@ -14,6 +14,7 @@
 # limitations under the License.
 ##########################################################################
 
+import logging
 import json
 import re
 
@@ -30,10 +31,11 @@ class OAuthFilter:
         self.protected_endpoints = {}
         self.configured = False
         self.verify_ssl = verify_ssl
+        self.logger = logging.getLogger(__name__)
         self.validators = dict()
         self.scopes = list()
 
-    def configure_with_jwt(self, jwks_url, issuer, audience, scopes=[]):
+    def configure_with_jwt(self, jwks_url, issuer, audience, scopes=None):
         """
 
         :param jwks_url:
@@ -67,35 +69,48 @@ class OAuthFilter:
     def _add_protected_endpoint(self, func, scopes):
         self.protected_endpoints[func] = scopes
 
-    def _extract_access_token(self, request):
+    @staticmethod
+    def _extract_access_token(incoming_request=None):
         """
         Extract the token from the Authorization header
         OAuth Access Tokens are placed in the header in the form "Bearer XYZ", so Bearer
         needs to be removed and the whitespaces trimmed.
 
         The method will abort if no token is present, and return a 401
-        :param request: The incoming flask request
+        :param incoming_request: The incoming flask request
         :return: the stripped token
         """
-        authorization_header = request.headers.get("authorization")
 
-        if authorization_header is None:
+        authorization_header = incoming_request.headers.get("authorization", type=str)
+        query_param_access_token = incoming_request.args.get("access_token", type=str)
+
+        if authorization_header is None and query_param_access_token is None:
             abort(401)
 
-        authorization_header_parts = re.split("\s+", authorization_header)
-        authorization_type = authorization_header_parts[0].lower()
+        if authorization_header is not None:
+            authorization_header_parts = authorization_header.split()
+            authorization_type = authorization_header_parts[0].lower()
 
-        # Extract the token from the Bearer string
-        if authorization_type != "bearer":
-            abort(401)
+            # Extract the token from the Bearer string
+            if authorization_type != "bearer":
+                abort(401)
 
-        return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
+            return authorization_header_parts[1] if len(authorization_header_parts) >= 2 else None
 
-    def _authorize(self, scope, endpoint_scopes=None):
-        if isinstance(scope, (list, tuple)):
+        return query_param_access_token
+
+    def _authorize(self, token_claims, endpoint_scopes, endpoint_claims):
+
+        for claim in endpoint_claims:
+            if claim not in token_claims or \
+                    (endpoint_claims[claim] is not None and token_claims[claim] != endpoint_claims[claim]):
+                return False
+
+        scope = token_claims['scope']
+        if isinstance(token_claims['scope'], (list, tuple)):
             incoming_scopes = scope
         else:
-            incoming_scopes = re.split("\s+", scope)
+            incoming_scopes = scope.split()
 
         if endpoint_scopes is None:
             required_scopes = self.scopes
@@ -104,16 +119,31 @@ class OAuthFilter:
 
         return all(s in incoming_scopes for s in required_scopes)
 
-    def protect(self, scopes=[]):
+    def protect(self, scopes=None, claims=None):
         """
         This is a decorator function that can be used on a flask route:
         @_oauth.protect(["read","write]) or @_oauth.protect()
-        :param scopes: The scopes that are required for the endpoint protected
+        :param claims: The claims that are required for the protected endpoint (dict)
+        :param scopes: The scopes that are required for the protected endpoint (list or space separated string)
         """
+
+        if scopes is None:
+            scopes = []
+
+        if not isinstance(scopes, list):
+            scopes = scopes.split()
+
+        if claims is None:
+            claims = {}
+
+        if not isinstance(claims, dict):
+            claims = {}
+            self.logger.warning("claims is not a dict and will be ignored")
+
         def decorator(f):
             @wraps(f)
             def inner_decorator(*args, **kwargs):
-                if self.filter(scopes=scopes) is None:
+                if self.filter(scopes=scopes, claims=claims) is None:
                     return f(*args, **kwargs)
                 else:
                     abort(500)
@@ -122,12 +152,13 @@ class OAuthFilter:
 
         return decorator
 
-    def filter(self, scopes=None):
-        print "Request method = " + str(request.method)
-        print "Authorization Header " + str(request.headers.get("authorization"))
+    def filter(self, scopes=None, claims=None):
+        self.logger.debug("Request method = " + str(request.method))
         token = self._extract_access_token(request)
         validated_token = dict(active=False)
+        self.logger.debug("Access token " + token)
 
+        # noinspection PyBroadException
         try:
             if "*" in self.validators:
                 validated_token = self.validators["*"].validate(token)
@@ -144,17 +175,17 @@ class OAuthFilter:
                         validated_token = self.validators[issuer].validate(token)
         except Exception:
             abort(make_response("Server Error", 500))
+            return
 
         if not validated_token['active']:
             abort(make_response("Access Denied", 401))
 
         # Authorize scope
-        authorized = self._authorize(validated_token['scope'], endpoint_scopes=scopes)
+        authorized = self._authorize(validated_token, endpoint_scopes=scopes, endpoint_claims=claims)
         if not authorized:
             abort(make_response("Forbidden", 403))
 
         # Set the user info in a context global variable
-        g.user = validated_token['subject']
+        request.claims = validated_token
 
         return None
-

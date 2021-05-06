@@ -14,15 +14,15 @@
 # limitations under the License.
 ##########################################################################
 
-import json
-import ssl
 import calendar
-import warnings
-import jwkest.jws
-
+import json
+import logging
+import ssl
 from datetime import datetime
+
+import jwkest.jws
+from cachelib.simple import SimpleCache
 from requests import request
-from werkzeug.contrib.cache import SimpleCache
 
 
 class OpaqueValidatorException(Exception):
@@ -42,6 +42,7 @@ class OpaqueValidator:
         self._client_secret = client_secret
 
         self._token_cache = SimpleCache()
+        self.logger = logging.getLogger(__name__)
 
     def introspect_token(self, token):
 
@@ -83,9 +84,8 @@ class OpaqueValidator:
                     result["active"] = True
                     result.update(json.loads(jws.jwt.part[1]))
             else:
-                 # Text or HTML presumably
-                warnings.warn("Response type from introspection endpoint was unsupported, response_type = " +
-                              response_content_type)
+                self.logger.warning("Response type from introspection endpoint was unsupported, response_type = " +
+                                    response_content_type)
 
                 raise Exception("Response type is from introspect endpoint is " + response_content_type, req.text)
         elif req.status_code == 204:
@@ -104,9 +104,7 @@ class OpaqueValidator:
         if cached_response is not None:
             if cached_response['active']:
                 if cached_response['exp'] >= now:
-                    return {"subject": cached_response['sub'],
-                            "scope": cached_response['scope'],
-                            "active": True}
+                    return cached_response
             else:
                 return dict(active=False)
 
@@ -140,6 +138,4 @@ class OpaqueValidator:
         if 'scope' not in introspect_response:
             raise OpaqueValidatorException("Missing scope field in introspection response")
 
-        return {"subject": introspect_response['sub'],
-                "scope": introspect_response['scope'],
-                "active": True}
+        return introspect_response
