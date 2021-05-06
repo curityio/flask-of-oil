@@ -16,14 +16,13 @@
 
 import logging
 import json
-import re
 
-from flask import request, abort, g, make_response
-from jwt_validator import JwtValidator
-from opaque_validator import OpaqueValidator
+from flask import request, abort
+from flask_of_oil.jwt_validator import JwtValidator
+from flask_of_oil.opaque_validator import OpaqueValidator
 from functools import wraps
 
-from tools import base64_urldecode
+from flask_of_oil.tools import base64_urldecode
 
 
 class OAuthFilter:
@@ -45,16 +44,27 @@ class OAuthFilter:
         :return:
         """
         self.validators["*"] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
-        self.scopes = scopes
 
-    def configure_with_multiple_jwt_issuers(self, issuers, audience, scopes=list()):
-        self.scopes = scopes
+        if scopes is not None:
+            self.scopes = scopes
+
+    def configure_with_multiple_jwt_issuers(self, issuers, audience, scopes=None):
+        """
+
+        :param issuers: List of issuer values.
+        :param audience: The expected value of the aud claim.
+        :param scopes: List of required scopes.
+        :return:
+        """
+
+        if scopes is not None:
+            self.scopes = scopes
 
         for issuer in issuers:
             jwks_url = issuer + "/jwks"
             self.validators[issuer] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
 
-    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=[]):
+    def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=None):
         """
 
         :param introspection_url:
@@ -64,7 +74,9 @@ class OAuthFilter:
         :return:
         """
         self.validators["*"] = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
-        self.scopes = scopes
+
+        if scopes is not None:
+            self.scopes = scopes
 
     def _add_protected_endpoint(self, func, scopes):
         self.protected_endpoints[func] = scopes
