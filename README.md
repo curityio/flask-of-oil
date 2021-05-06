@@ -87,11 +87,11 @@ for the request to be allowed. The value `None` instructs the filter to not chec
 
 ```python
 # Only allow requests where the incoming access token has the scope read and it contains a claim named MyGoodClaim
-@_oauth.protect(scope=["read"], claims={"MyGoodClaim": None})
+@_oauth.protect(scopes=["read"], claims={"MyGoodClaim": None})
 ```
 ```python
 # Only allow requests where the incoming access token has the scope write and it contains a claim named MyGoodClaim with value MyGoodValue
-@_oauth.protect(scope=["write"], claims={"MyGoodClaim": "MyGoodValue"})
+@_oauth.protect(scopes=["write"], claims={"MyGoodClaim": "MyGoodValue"})
 ```
 
 

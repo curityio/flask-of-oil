@@ -15,12 +15,15 @@
 ##########################################################################
 
 import logging
+import json
+import re
+
+from flask import request, abort, g, make_response
+from jwt_validator import JwtValidator
+from opaque_validator import OpaqueValidator
 from functools import wraps
 
-from flask import request, abort, make_response
-
-from flask_of_oil.jwt_validator import JwtValidator
-from flask_of_oil.opaque_validator import OpaqueValidator
+from tools import base64_urldecode
 
 
 class OAuthFilter:
@@ -29,8 +32,8 @@ class OAuthFilter:
         self.configured = False
         self.verify_ssl = verify_ssl
         self.logger = logging.getLogger(__name__)
-        self.validator = None
-        self.scopes = None
+        self.validators = dict()
+        self.scopes = list()
 
     def configure_with_jwt(self, jwks_url, issuer, audience, scopes=None):
         """
@@ -41,10 +44,15 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
-        if scopes is None:
-            scopes = []
-        self.validator = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
+        self.validators["*"] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
         self.scopes = scopes
+
+    def configure_with_multiple_jwt_issuers(self, issuers, audience, scopes=list()):
+        self.scopes = scopes
+
+        for issuer in issuers:
+            jwks_url = issuer + "/jwks"
+            self.validators[issuer] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
 
     def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=[]):
         """
@@ -55,7 +63,7 @@ class OAuthFilter:
         :param scopes:
         :return:
         """
-        self.validator = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
+        self.validators["*"] = OpaqueValidator(introspection_url, client_id, client_secret, self.verify_ssl)
         self.scopes = scopes
 
     def _add_protected_endpoint(self, func, scopes):
@@ -150,11 +158,24 @@ class OAuthFilter:
     def filter(self, scopes=None, claims=None):
         self.logger.debug("Request method = " + str(request.method))
         token = self._extract_access_token(request)
+        validated_token = dict(active=False)
         self.logger.debug("Access token " + token)
 
         # noinspection PyBroadException
         try:
-            validated_token = self.validator.validate(token)
+            if "*" in self.validators:
+                validated_token = self.validators["*"].validate(token)
+            else:
+                # See if we can determine the issuer; we'll use that as the key to find
+                # the validator.
+                parts = token.split(".")
+
+                if len(parts) == 3:
+                    payload = json.loads(base64_urldecode(parts[1]))
+                    issuer = payload["iss"]
+
+                    if issuer in self.validators:
+                        validated_token = self.validators[issuer].validate(token)
         except Exception:
             abort(500)
             return
