@@ -142,18 +142,32 @@ if __name__ == '__main__':
              ssl_context="adhoc")
 ```
 
+**Using JWTs with multiple issuers**
+
+You can configure multiple issuers of your tokens. The validator will match the issuer from the incoming JWT with one from
+the configured list to properly validate the token.
+
+```python
+if __name__ == '__main__':
+    # configure the oauth filter
+    _oauth.configure_with_multiple_jwt_issuers(["https://idsvr.example.com/configured-issuer", "https://idsvr.example.com/another-issuer"], "audience-of-token")
+
+    # initiate the Flask app
+    _app.run("localhost", debug=True, port=8000,
+             ssl_context="adhoc")
+```
 
 ## Access token claims in Request object
 
 When the filter accepts the request, it sets the `request.claims` context local variable for that request with all
 the token claims. For JWT tokens, this is the JWT payload and for opaque tokens the introspection response. 
 
-For example, in the subject of the Authorization can be accessed like so `request.claims.sub` 
+For example, the subject of the Authorization can be accessed like so `request.claims["sub"]`.
 
 ## Handling errors
 
-The filter may abort the request if the Access token is invalid or if the scopes in the access token doesn't match the
-required scopes for the route.
+The filter may abort the request if the Access token is invalid or if the scopes or claims in the access token doesn't match the
+required scopes or claims for the route.
 
 **401 Unauthorized**
 
@@ -170,8 +184,8 @@ def unauthorized(error):
 
 **403 Forbidden**
 
-When a valid token is presented the filter but it's missing the appropriate scopes then the request is aborted
-with a 403 Forbidden.
+When a valid token is presented the filter but it's missing the appropriate scopes or claims (or the claims have wrong values)
+then the request is aborted with a 403 Forbidden.
 
 ```python
 @_app.errorhandler(403)

@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name='Flask-of-Oil',
     packages=['flask_of_oil'],
-    version='1.0.1',
+    version='1.1.0',
     license='Apache Software License',
     description='Flask OAuth Filter - an OAuth Interceptor Logic',
     long_description=open('README.rst').read(),
