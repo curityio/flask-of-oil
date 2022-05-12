@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.0 (2022-05-12)
+
 Feature:
     - Refresh JWKS from JWKS URI when no suitable keys found in current JWKS.
 
