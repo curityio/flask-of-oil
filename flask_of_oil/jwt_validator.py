@@ -39,7 +39,7 @@ class JwtValidator:
         self.aud = audience
         self.iss = issuer
         self.verify_ssl_server = verify_ssl_server
-        self.lastSuccessfulJWKSFetch = None
+        self.lastSuccessfulJWKSFetch = 0
         self.jwks = self.load_keys()
         self.jwksFetchCooldown = 30 # in seconds
 
