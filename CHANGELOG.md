@@ -6,7 +6,7 @@ Feature:
     - Refresh JWKS from JWKS URI when no suitable keys found in current JWKS.
 
 Fix:
-    - Fixed verification of `aud` claim. Now properly verifies audience where a token contains an array of audiences.
+    - Fixed verification of `aud` claim. Now properly verifies audience where a token contains a single audience value.
 
 ## 1.1.0 (2021-05-05)
 
