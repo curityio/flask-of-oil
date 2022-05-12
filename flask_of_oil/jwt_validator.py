@@ -21,7 +21,7 @@ import ssl
 from datetime import datetime
 
 from jwkest.jwk import KEYS
-from jwkest.jws import JWS
+from jwkest.jws import JWS, NoSuitableSigningKeys
 from requests import request
 
 from flask_of_oil.tools import base64_urldecode
@@ -33,13 +33,15 @@ class JwtValidatorException(Exception):
 
 class JwtValidator:
     def __init__(self, jwks_url, issuer, audience, verify_ssl_server=True):
+        self.logger = logging.getLogger(__name__)
         self.supported_algorithms = ['RS256', "RS512"]
         self.jwks_url = jwks_url
         self.aud = audience
         self.iss = issuer
         self.verify_ssl_server = verify_ssl_server
+        self.lastSuccessfulJWKSFetch = 0
         self.jwks = self.load_keys()
-        self.logger = logging.getLogger(__name__)
+        self.jwksFetchCooldown = 30 # in seconds
 
     def validate(self, jwt):
         parts = jwt.split('.')
@@ -83,6 +85,21 @@ class JwtValidator:
         # noinspection PyBroadException
         try:
             jws.verify_compact(jwt, self.jwks)
+        except NoSuitableSigningKeys as e:
+            now = datetime.now().timestamp()
+            if self.lastSuccessfulJWKSFetch + self.jwksFetchCooldown < now:
+                # First try to get new set of keys from JWKS, then retry validation
+                self.logger.debug("Refreshing keys from JWKS URI")
+                self.jwks = self.load_keys()
+                # noinspection PyBroadException
+                try:
+                    jws.verify_compact(jwt, self.jwks)
+                except Exception:
+                    self.logger.debug("Exception validating signature")
+                    return {'active': False}
+            else:
+                self.logger.debug("Exception validating signature")
+                return {'active': False}
         except Exception:
             self.logger.debug("Exception validating signature")
             return {'active': False}
@@ -135,4 +152,5 @@ class JwtValidator:
         # load the jwk set.
         jwks = KEYS()
         jwks.load_jwks(self.get_jwks_data())
+        self.lastSuccessfulJWKSFetch = datetime.now().timestamp()
         return jwks
