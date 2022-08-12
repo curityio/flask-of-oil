@@ -20,10 +20,8 @@ import string
 
 
 def base64_urldecode(string):
-    string.replace('-', '+')
-    string.replace('_', '/')
     string += '=' * (4 - (len(string) % 4))
-    return base64.b64decode(string)
+    return base64.urlsafe_b64decode(string)
 
 
 def decode_payload(token):
