@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Fix:
+    - Properly set empty scope in JWT payload, if no scope present in the JWT.
+
 ## 1.2.0 (2022-05-12)
 
 Feature:

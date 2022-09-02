@@ -116,9 +116,7 @@ class JwtValidator:
 
         # Could be an empty scope, which may be allowed, so replace with empty string if not found
         if 'scope' not in payload:
-            scope = ""
-        else:
-            scope = payload['scope']
+            payload['scope'] = ""
 
         exp = payload['exp']
 
