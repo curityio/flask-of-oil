@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.2.2 (2023-05-29)
+
+Feature:
+    - Updated requests to version 2.31.0
+
 ## 1.2.1 (2023-05-29)
 
 Feature:
