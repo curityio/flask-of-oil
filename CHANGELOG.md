@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.2.1 (2023-05-29)
+
+Feature:
+    - Updated flask to version 2.3.2.
+
 Fix:
     - Properly set empty scope in JWT payload, if no scope present in the JWT.
 

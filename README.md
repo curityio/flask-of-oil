@@ -195,6 +195,36 @@ def forbidden(error):
            403, {'Content-Type': 'application/json; charset=utf-8'}
 ```
 
+## Running the test suite
+
+You can run the test suite with the following command:
+
+```bash
+pytest --log-level=DEBUG
+```
+
+If you want to run tests from a concrete file, use this command:
+
+```bash
+pytest --log-level=DEBUG tests/test_jwt_validator.py
+```
+
+It's best to run the tests in a dedicated Python virtual environment. Follow these steps to create the environment, install all dependencies, then run the test suite:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pytest --log-level=DEBUG tests/test_jwt_validator.py
+```
+
+When you're done with the tests, run:
+
+```bash
+deactivate
+```
+
+to exit the virtual environment.
 
 ## Questions and Support
 
