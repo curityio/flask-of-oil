@@ -48,7 +48,7 @@ class OAuthFilter:
         if scopes is not None:
             self.scopes = scopes
 
-    def configure_with_multiple_jwt_issuers(self, issuers, audience, scopes=None):
+    def configure_with_multiple_jwt_issuers(self, issuers, audience=None, scopes=None):
         """
 
         :param issuers: List of issuer values.
@@ -61,8 +61,12 @@ class OAuthFilter:
             self.scopes = scopes
 
         for issuer in issuers:
-            jwks_url = issuer + "/jwks"
-            self.validators[issuer] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
+            if isinstance(issuer, str):
+                jwks_url = issuer + "/jwks"
+                self.validators[issuer] = JwtValidator(jwks_url, issuer, audience, self.verify_ssl)
+            elif isinstance(issuer, dict):
+                self.validators[issuer['name']] = JwtValidator(issuer['url'], issuer['name'], issuer['audience'],
+                                                               self.verify_ssl)
 
     def configure_with_opaque(self, introspection_url, client_id, client_secret, scopes=None):
         """
@@ -111,16 +115,39 @@ class OAuthFilter:
 
         return query_param_access_token
 
-    def _authorize(self, token_claims, endpoint_scopes, endpoint_claims):
+    def _authorize(self, token_claims, endpoint_scopes, endpoint_claims, endpoint_audience):
+
+        if endpoint_audience is not None:
+            if not isinstance(endpoint_audience, list):
+                endpoint_audience = [endpoint_audience]
+
+            if not isinstance(token_claims['aud'], list):
+                token_claims['aud'] = [token_claims['aud']]
+
+            if len(set(endpoint_audience)&set(token_claims['aud'])) == 0:
+                return False
 
         if endpoint_claims is None:
             endpoint_claims = {}
 
         for claim in endpoint_claims:
-            if claim not in token_claims or \
-                    (endpoint_claims[claim] is not None and token_claims[claim] != endpoint_claims[claim]):
+            if claim not in token_claims:
                 return False
 
+            if endpoint_claims[claim] is not None:
+                if isinstance(token_claims[claim], list):
+                    if isinstance(endpoint_claims[claim], list):
+                        if len(set(token_claims[claim])&set(endpoint_claims[claim])) == 0:
+                            return False
+                    else:
+                        if endpoint_claims[claim] not in token_claims[claim]:
+                            return False
+                else:
+                    if token_claims[claim] != endpoint_claims[claim]:
+                        return False
+
+        if 'scope' not in token_claims:
+            token_claims['scope'] = []
         scope = token_claims['scope']
         if isinstance(token_claims['scope'], (list, tuple)):
             incoming_scopes = scope
@@ -134,12 +161,13 @@ class OAuthFilter:
 
         return all(s in incoming_scopes for s in required_scopes)
 
-    def protect(self, scopes=None, claims=None):
+    def protect(self, scopes=None, claims=None, audience=None):
         """
         This is a decorator function that can be used on a flask route:
         @_oauth.protect(["read","write]) or @_oauth.protect()
         :param claims: The claims that are required for the protected endpoint (dict)
         :param scopes: The scopes that are required for the protected endpoint (list or space separated string)
+        :param audience: The audience that is required for the protected endpoint (string)
         """
 
         if scopes is None:
@@ -158,7 +186,7 @@ class OAuthFilter:
         def decorator(f):
             @wraps(f)
             def inner_decorator(*args, **kwargs):
-                if self.filter(scopes=scopes, claims=claims) is None:
+                if self.filter(scopes=scopes, claims=claims, audience=audience) is None:
                     return f(*args, **kwargs)
                 else:
                     abort(500)
@@ -167,7 +195,8 @@ class OAuthFilter:
 
         return decorator
 
-    def filter(self, scopes=None, claims=None):
+
+    def filter(self, scopes=None, claims=None, audience=None):
         self.logger.debug("Request method = " + str(request.method))
         token = self._extract_access_token(request)
         validated_token = dict(active=False)
@@ -196,7 +225,8 @@ class OAuthFilter:
             abort(401)
 
         # Authorize scope
-        authorized = self._authorize(validated_token, endpoint_scopes=scopes, endpoint_claims=claims)
+        authorized = self._authorize(validated_token, endpoint_scopes=scopes, endpoint_claims=claims,
+                                     endpoint_audience=audience)
         if not authorized:
             abort(403)
 

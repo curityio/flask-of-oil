@@ -68,7 +68,10 @@ class JwtValidator:
         if not isinstance(aud, list):
             aud = [aud]
 
-        if self.aud not in aud:
+        if not isinstance(self.aud, list):
+            self.aud = [self.aud]
+
+        if len(set(self.aud)&set(aud)) == 0:
             self.logger.debug("Invalid audience %s, expected %s" % (aud, self.aud))
             return {"active": False}
 
